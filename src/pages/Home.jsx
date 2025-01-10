@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDarkMode } from "../context/DarkMode";
-import { Edit, Plus, Trash } from "lucide-react";
+import {
+  Edit,
+  Plus,
+  Trash,
+  X,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const Home = () => {
   const [user, setUser] = useState(null);
@@ -12,8 +20,10 @@ const Home = () => {
   const [newItem, setNewItem] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [editingItemId, setEditingItemId] = useState(null); // Track item being edited
+  const [itemsPerPage, setItemsPerPage] = useState(3);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [filter, setFilter] = useState("none");
 
   const getDataFromLocalStorage = () => {
     const storedData = localStorage.getItem("friendData");
@@ -26,25 +36,29 @@ const Home = () => {
 
   const addItem = () => {
     if (newItem) {
-      if (editingItemId) {
-        const updatedData = data.map((item) =>
-          item.id === editingItemId ? { ...item, name: newItem } : item
-        );
-        setData(updatedData);
-        saveDataToLocalStorage(updatedData);
-        setEditingItemId(null);
-      } else {
-        const updatedData = [...data, { id: Date.now(), name: newItem }];
-        setData(updatedData);
-        saveDataToLocalStorage(updatedData);
-      }
+      const updatedData = [
+        ...data,
+        { id: Date.now(), name: newItem, date: new Date() },
+      ];
+      setData(updatedData);
+      saveDataToLocalStorage(updatedData);
       setNewItem("");
     }
   };
 
   const updateItem = (item) => {
-    setEditingItemId(item.id);
-    setNewItem(item.name);
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
+  const saveEditedItem = () => {
+    const updatedData = data.map((item) =>
+      item.id === editingItem.id ? { ...item, name: editingItem.name } : item
+    );
+    setData(updatedData);
+    saveDataToLocalStorage(updatedData);
+    setIsModalOpen(false);
+    setEditingItem(null);
   };
 
   const deleteItem = (id) => {
@@ -74,7 +88,18 @@ const Home = () => {
     navigate({ search: params.toString() });
   };
 
-  const filteredData = data.filter((item) =>
+  const sortData = () => {
+    switch (filter) {
+      case "alphabet":
+        return [...data].sort((a, b) => a.name.localeCompare(b.name));
+      case "date":
+        return [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+      default:
+        return data;
+    }
+  };
+
+  const filteredData = sortData().filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -121,31 +146,42 @@ const Home = () => {
             type="text"
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
-            className="border p-2 mr-2 w-full"
-            placeholder={editingItemId ? "Edit friend" : "Add new friend"}
+            className="border-[2px] p-3 mr-2 w-full rounded-md text-black"
+            placeholder="Add new friend"
           />
-          <button onClick={addItem} className="bg-blue-500 text-white p-2">
+          <button onClick={addItem} className="border-[1px] p-3 rounded-md">
             <Plus />
           </button>
         </div>
 
-        <div className="mb-4 flex justify-center items-center w-full gap-4">
+        <div className="mb-4 flex justify-between items-center w-full gap-4">
           <input
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            className="border p-2 w-full"
+            className="border-[2px] p-3 w-full rounded-md text-black"
             placeholder="Search friend"
           />
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="border-[2px] p-3 rounded-md text-black"
+          >
+            <option value="none">No Filter</option>
+            <option value="alphabet">A - Z</option>
+            <option value="date">Date</option>
+          </select>
         </div>
 
         <div className="mb-4 flex flex-col w-full justify-center">
-          <ul>
+          <div>
             {currentItems.length > 0 ? (
               currentItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex justify-between items-center mb-2 shadow-lg p-4"
+                  className={`flex justify-between items-center mb-2 shadow-lg p-4 ${
+                    isDarkMode ? "shadow-gray-800" : ""
+                  }`}
                 >
                   <div>
                     <h1>{item.name}</h1>
@@ -162,30 +198,74 @@ const Home = () => {
               ))
             ) : (
               <div className="flex h-full w-full justify-center">
-                You have no friends!
+                Friends Not Found!
               </div>
             )}
-          </ul>
+          </div>
         </div>
 
-        <div className="flex justify-center space-x-2">
-          {[...Array(Math.ceil(filteredData.length / itemsPerPage))].map(
-            (_, index) => (
-              <button
-                key={index + 1}
-                onClick={() => paginate(index + 1)}
-                className={`p-2 ${
-                  currentPage === index + 1
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200"
-                }`}
-              >
-                {index + 1}
-              </button>
-            )
-          )}
+        <div className="flex justify-center items-center gap-4">
+          <button
+            onClick={() => paginate(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`p-2 bg-gray-200 rounded-sm ${
+              currentPage === 1 ? "opacity-50" : ""
+            }`}
+          >
+            <ChevronLeft />
+          </button>
+          <span className="text-xl font-bold">{currentPage}</span>
+          <button
+            onClick={() => paginate(currentPage + 1)}
+            disabled={
+              currentPage === Math.ceil(filteredData.length / itemsPerPage) ||
+              currentItems < 3
+            }
+            className={`p-2 bg-gray-200 rounded-sm ${
+              currentPage === Math.ceil(filteredData.length / itemsPerPage) ||
+              currentItems < 3
+                ? "opacity-50"
+                : ""
+            }`}
+          >
+            <ChevronRight />
+          </button>
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div
+            className={`p-6 rounded-md md:w-96 w-full ${
+              isDarkMode ? "bg-gray-900" : "bg-white"
+            }`}
+          >
+            <h2 className="text-lg font-bold mb-4">Edit Friend</h2>
+            <input
+              type="text"
+              value={editingItem?.name || ""}
+              onChange={(e) =>
+                setEditingItem({ ...editingItem, name: e.target.value })
+              }
+              className="border-[1px] p-3 w-full rounded-md mb-4 text-black"
+            />
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="border-[2px] p-3 rounded-md"
+              >
+                <X />
+              </button>
+              <button
+                onClick={saveEditedItem}
+                className="border-[2px] p-3 rounded-md bg-green-800 text-white"
+              >
+                <Check />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

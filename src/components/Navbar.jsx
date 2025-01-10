@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import DarkModeToggle from "./DarkmodeToggle";
 import { useDarkMode } from "../context/DarkMode";
 import { Link, useNavigate } from "react-router-dom";
+import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { isDarkMode } = useDarkMode();
   const navigate = useNavigate();
   const [user, setUser] = useState("");
+  const dropdownRef = useRef(null);
 
   const getUser = () => {
     const storedUser = localStorage.getItem("user");
@@ -17,44 +19,45 @@ const Navbar = () => {
         setUser(res.name);
       } catch (error) {
         console.error("Failed to parse user data:", error);
-        return null;
       }
     }
-    return null;
   };
 
   useEffect(() => {
     getUser();
-  }, []);
-
-  const dropdownRef = useRef(null);
-  const buttonRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
+    setUser("");
     navigate("/login");
   };
 
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setIsDropdownOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   return (
     <div
-      className={`flex justify-between items-center p-4 md:px-10 px-2 ${
+      className={`flex justify-between items-center p-4 md:px-10 px-6 ${
         isDarkMode ? "bg-black text-white" : "bg-white text-black"
       }`}
     >
@@ -63,32 +66,33 @@ const Navbar = () => {
       </Link>
       <div className="flex items-center">
         <DarkModeToggle />
-        <div className="relative ml-4">
+        <div className="relative " ref={dropdownRef}>
           <button
-            ref={buttonRef}
             onClick={() => setIsDropdownOpen((prev) => !prev)}
-            className="px-4 py-2 border rounded focus:outline-none"
+            className="px-4 py-2 rounded focus:outline-none"
           >
-            Menu
+            {isDropdownOpen ? <X /> : <Menu />}
           </button>
-          <div
-            ref={dropdownRef}
-            className={`absolute right-0 mt-2 w-48 ${
-              isDropdownOpen ? "opacity-100 max-h-40" : "opacity-0 max-h-0"
-            } border rounded shadow-lg transition-all duration-300 ease-in-out`}
-          >
-            <ul className="py-2 flex flex-col">
-              <Link to="" className="px-4 py-2 font-bold">
-                {user}
-              </Link>
-              <Link to="/profile" className="px-4 py-2 cursor-pointer ">
-                Profile
-              </Link>
-              <Link className="px-4 py-2 cursor-pointer" onClick={handleLogout}>
-                Logout
-              </Link>
-            </ul>
-          </div>
+          {isDropdownOpen && (
+            <div
+              className={`absolute right-0 w-48 border rounded shadow-lg transition-all duration-300 ease-in-out z-50 ${
+                isDarkMode ? "bg-black text-white" : "bg-white text-black"
+              }`}
+            >
+              <ul className="py-2 flex flex-col">
+                <span className="px-4 py-2 font-bold">{user}</span>
+                <Link to="/profile" className="px-4 py-2 cursor-pointer">
+                  Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-left cursor-pointer"
+                >
+                  Logout
+                </button>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
