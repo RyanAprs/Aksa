@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDarkMode } from "../context/DarkMode";
-import {
-  Edit,
-  Plus,
-  Trash,
-  X,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Edit, Plus, Trash, X, Check } from "lucide-react";
+import Pagination from "../components/Pagination";
 
 const Home = () => {
   const [user, setUser] = useState(null);
@@ -204,33 +197,12 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-4">
-          <button
-            onClick={() => paginate(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`p-2 bg-gray-200 rounded-sm ${
-              currentPage === 1 ? "opacity-50" : ""
-            }`}
-          >
-            <ChevronLeft />
-          </button>
-          <span className="text-xl font-bold">{currentPage}</span>
-          <button
-            onClick={() => paginate(currentPage + 1)}
-            disabled={
-              currentPage === Math.ceil(filteredData.length / itemsPerPage) ||
-              currentItems < 3
-            }
-            className={`p-2 bg-gray-200 rounded-sm ${
-              currentPage === Math.ceil(filteredData.length / itemsPerPage) ||
-              currentItems < 3
-                ? "opacity-50"
-                : ""
-            }`}
-          >
-            <ChevronRight />
-          </button>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredData.length}
+          itemsPerPage={itemsPerPage}
+          paginate={paginate}
+        />
       </div>
 
       {isModalOpen && (
